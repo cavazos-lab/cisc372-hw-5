@@ -3,7 +3,7 @@
 #include <math.h>
 #include <sys/time.h>
 
-#define N 1024   /* do not change this line, i.e. make N to be fixed 1024 */
+const int N=4096;   /* Number of Vectors */
 
 /* do not change the following function */
 double rtclock()
@@ -27,7 +27,8 @@ __global__ void cosine(YOURJOB)
 
 int main(int argc, char*argv[])
 {
-    double x[N], y[N], sim[N][N], vlen[N];  /* data structure on CPU */
+    double x[N], y[N], vlen[N];  /* data structure on CPU */
+    double ** sim;
 	double *d_x, *d_y, *d_sim, *d_vlen;     /* data structure for GPU */
     double * gpu_sim;                       /* data structure to be dynamically allocated */
                                             /* It holds the results copied back from GPU */
@@ -37,7 +38,16 @@ int main(int argc, char*argv[])
     /* The following 4 variables is for configuration grid size and block size */
     /* If you let THREAD_DIMY (BLOCK_DIMY) be 1, then the grid size and block size
        are 1D, otherwise the grid size is 2D (assuming THREAD_DIMX BLOCK_DIMX are not 1*/
-    int THREAD_DIMX,THREAD_DIMY,BLOCK_DIMX,BLOCK_DIMY; 
+    int NUM_OF_THREADS_IN_X_DIM_OF_A_BLOCK; 
+    int NUM_OF_THREADS_IN_Y_DIM_OF_A_BLOCK;
+    int NUM_OF_BLOCKS_IN_X_DIM_OF_A_GRID; 
+    int NUM_OF_BLOCKS_IN_Y_DIM_OF_A_GRID;
+    int i;
+
+    /* Dynamically allocate memory for sim[N][N] on the CPU */
+    sim= (double**)malloc(sizeof(double*) *N);
+    for (i=0; i<N; i++)
+      sim[i]=(double*)malloc(sizeof(double)*N); 
    
     /* allocation for holding gpu results */ 
     /* convert the 2D to 1D:   sim[i][j] <--> gpu_sim[i*N+j] */
@@ -65,13 +75,12 @@ int main(int argc, char*argv[])
 	cudaMemcpy( d_sim, sim, size2, cudaMemcpyHostToDevice );
 
 	/* launch the kernel on the GPU */
-    /* 
-    THREAD_DIMX = YOURJOB;
-    THREAD_DIMY = YOURJOB;
-    BLOCK_DIMX = YOURJOB;
-    BLOCK_DIMY = YOURJOB;
-    dim3 dimGrid(BLOCK_DIMX,BLOCK_DIMY,1);
-    dim3 dimBlock(THREAD_DIMX,THREAD_DIMY,1);
+    NUM_OF_THREADS_IN_X_DIM_OF_A_BLOCK = YOURJOB;    /* You decide how many threads in X direction of a block*/
+    NUM_OF_THREADS_IN_Y_DIM_OF_A_BLOCK = YOURJOB;    /* You decide how many threads in Y direction of a block*/
+    NUM_OF_BLOCKS_IN_X_DIM_OF_A_GRID = YOURJOB;      /* You decide how many blocks in X direction of a grid*/
+    NUM_OF_BLOCKS_IN_Y_DIM_OF_A_GRID = YOURJOB;    /* You decide how many blocks in Y direction of a grid*/
+    dim3 dimBlock(NUM_OF_THREADS_IN_X_DIM_OF_A_BLOCK, NUM_OF_THREADS_IN_Y_DIM_OF_A_BLOCK, 1);
+    dim3 dimGrid(NUM_OF_BLOCKS_IN_X_DIM_OF_A_GRID, NUM_OF_BLOCKS_IN_Y_DIM_OF_A_GRID, 1);
    
     /* start the timer */ 
     double start_cpu = rtclock();
@@ -93,11 +102,11 @@ int main(int argc, char*argv[])
       {
         /* calculate results on the CPU */
         sim[i][j] = (x[i]*x[j]+y[i]*y[j])/(vlen[i]*vlen[j]);      
-        /* if your GPU calculation is correct, you should NOT see the printf printout */
+        /* if your GPU calculation is correct, you should NOT see any printf printout */
         /* if you do, you made a mistake in the cosine GPU kernel */
-        if ( (sim[i][j] - gpu_sim[i*N+j]) > 1e-5)
+        if ( (sim[i][j] - gpu_sim[i*N+j]) > 1e-5 || (gpu_sim[i*N+j] - sim[i][j] > 1e-5))
         {
-            printf("GPU %f and CPU %f results do not match!\n", sim[i][j], gpu_sim[i*N+j]);
+            printf("CPU %f and GPU %f results do not match!\n", sim[i][j], gpu_sim[i*N+j]);
             exit(-1);
         } 
     }

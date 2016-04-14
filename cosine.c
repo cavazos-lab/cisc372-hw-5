@@ -4,7 +4,7 @@
 #include <sys/time.h>    /* for gettimeofday */
 #include <time.h>
 
-const int N=1024;   /* Number of Vectors */
+const int N=4096;   /* Number of Vectors */
 
 
 double rtclock()
@@ -24,9 +24,14 @@ int main (int argc, char* argv[])
 {
   double x[N];   /* X coordinates of N points (vectors) */
   double y[N];   /* Y coordinates of N points (vectors) */
-  double sim[N][N];  /* pairwise cosine similarity of N points (vectors) */
-  double vlen[N]; /* vector length of the N points (vectors */
+  double** sim;  /* pairwise cosine similarity of N points (vectors) sim[N][N] */
+  /* Use malloc to avoid stack overflow */
+  double vlen[N]; /* vector length of the N points (vectors) */
   int i,j; 
+
+  sim= malloc(sizeof(double*) *N);
+  for (i=0; i<N; i++)
+    sim[i]=malloc(sizeof(double)*N); 
 
   /* initialize random vectors */
   /* Do not parallelize this loop */
