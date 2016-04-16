@@ -87,6 +87,14 @@ int main(int argc, char*argv[])
 
 	/* your job is to implement the cosine GPU kernel */
 	cosine<<< dimGrid, dimBlock>>>(YOURJOB);
+
+    /* error checking */    
+    cudaError err = cudaGetLastError();
+    if ( cudaSuccess != err){
+        printf( "Error! %s \n", cudaGetErrorString(err));
+        exit(-1);
+    } 
+
     /* Ensure that the CPU codes after this line wait until GPU job finishes execution  */
     cudaThreadSynchronize();
 
